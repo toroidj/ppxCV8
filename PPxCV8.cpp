@@ -14,6 +14,7 @@ namespace InteropServices = System::Runtime::InteropServices;
 ref class CPPxObjects;
 ref class CInstance;
 int RunScript(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, int file);
+int StayInfo(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc);
 String^ GetScriptText(String^ param, int file);
 void FreeStayInstance(void);
 void DropStayInstance(CInstance^ instance);
@@ -58,6 +59,11 @@ typedef struct {
 	PPXAPPINFOW* ppxa;
 	PPXMCOMMANDSTRUCT* pxc;
 } OldPPxInfoStruct;
+
+typedef struct {
+	int pane, tab;
+	const WCHAR *str;
+} PPXUPTR_TABINDEXSTRW_C;
 
 DWORD StayInstanseIDserver = ScriptStay_FirstAutoID;
 
@@ -966,6 +972,7 @@ public:
 			m_PaneIndex = index;
 		}
 	}
+
 	property int Index {
 		int get() { return index; }
 		void set(int num) { index = num; }
@@ -1014,6 +1021,101 @@ public:
 			CTab^ tab = gcnew CTab(m_ppxa, m_PaneIndex);
 			tab->index = index;
 			return tab;
+		}
+	}
+
+	property int GroupIndex
+	{
+		int get() {
+			int tmp[2];
+
+			tmp[0] = index;
+			tmp[1] = -1;
+			(*m_ppxa)->Function(*m_ppxa, PPXCMDID_COMBOGROUPINDEX, &tmp);
+			return tmp[1];
+		}
+		void set(int groupindex) {
+			int tmp[2];
+
+			tmp[0] = index;
+			tmp[1] = groupindex;
+			(*m_ppxa)->Function(*m_ppxa, PPXCMDID_SETCOMBOGROUPINDEX, &tmp);
+		}
+	}
+
+	property int GroupCount
+	{
+		int get() {
+			int tmp[2];
+
+			tmp[0] = index;
+			tmp[1] = -1;
+			(*m_ppxa)->Function(*m_ppxa, PPXCMDID_COMBOGROUPCOUNT, &tmp);
+			return tmp[1];
+		}
+	}
+
+	property String^ GroupList
+	{
+		String^ get() {
+			int tmpc[2];
+			PPXUPTR_TABINDEXSTRW tmp;
+			int listindex = 0, maxindex;
+			String^ s_result;
+
+			tmpc[0] = index;
+			tmpc[1] = 0;
+			if ( (*m_ppxa)->Function(*m_ppxa, PPXCMDID_COMBOGROUPCOUNT, &tmpc) != PPXA_NO_ERROR ){
+				return nullptr;
+			}
+			maxindex = tmpc[1];
+
+			WCHAR *listbuf, *listptr;
+
+			listbuf = listptr = (WCHAR *)malloc(maxindex * CMDLINESIZE * sizeof(WCHAR));
+
+			for (; listindex < maxindex; listindex++){
+				tmp.pane = index;
+				tmp.tab = listindex;
+				if ( listindex == 0 ){
+					tmp.str = listptr;
+				}else{
+					tmp.str = listptr + 1;
+					*listptr = '\t';
+				}
+				if ( (*m_ppxa)->Function(*m_ppxa, PPXCMDID_COMBOGROUPNAME, &tmp) !=  PPXA_NO_ERROR ){
+					*listptr = '\0';
+					break;
+				}
+				listptr += wcslen(listptr);
+			}
+			s_result = marshal_as<String^>(listbuf);
+			free(listbuf);
+			return s_result;
+		}
+	}
+
+	property String^ GroupName
+	{
+		String^ get() {
+			PPXUPTR_TABINDEXSTRW tmp;
+			WCHAR param[CMDLINESIZE];
+
+			tmp.pane = index;
+			tmp.tab = -1;
+			tmp.str = param;
+			param[0] = '\0';
+			(*m_ppxa)->Function(*m_ppxa, PPXCMDID_COMBOGROUPNAME, &tmp);
+			return marshal_as<String^>(param);
+		}
+		void set(String^ newname) {
+			PPXUPTR_TABINDEXSTRW_C tmp;
+			marshal_context ctx;
+
+			tmp.pane = index;
+			tmp.tab = -1;
+			tmp.str = ctx.marshal_as<const wchar_t*>(newname);
+			(*m_ppxa)->Function(*m_ppxa, PPXCMDID_SETCOMBOGROUPNAME, &tmp);
 		}
 	}
 
@@ -2862,6 +2964,12 @@ VC_DLL_EXPORTS int WINAPI ModuleEntry(PPXAPPINFOW* ppxa, DWORD cmdID, PPXMODULEP
 				return RunScript(ppxa, pxs.command, 2);
 			}
 			break;
+
+		case 0xd925fddf:
+			if ( !strcmpW(pxs.command->commandname, L"STAYINFO") ){
+				return StayInfo(ppxa, pxs.command);
+			}
+			break;
 		}
 		return PPXMRESULT_SKIP;
 	}
@@ -3019,11 +3127,11 @@ CInstance^ GetStayInstance(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, OldPPxInfo
 		maxindex = gc_StayInstance->Count;
 		for (index = 0; index < maxindex; index++) {
 			StayInstance = gc_StayInstance[index];
-			if ((StayInstance->info->stay.threadID == ThreadID) &&
-				((StayMode >= ScriptStay_Stay) ?
-					(StayInstance->info->stay.mode == StayMode) :
-					((StayInstance->info->stay.hWnd == hWnd) &&
-					 ((file == 0) || (StayInstance->source == source))) ) ){
+			if ( (StayInstance->info->stay.threadID == ThreadID) &&
+				 (StayInstance->info->stay.hWnd == hWnd) &&
+				 ((StayMode >= ScriptStay_Stay) ?
+				   (StayInstance->info->stay.mode == StayMode) :
+				   ((file == 0) || (StayInstance->source == source))) ){
 				break;
 			}
 		}
@@ -3260,6 +3368,9 @@ int RunStayFunction(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, CResult^ value, i
 
 int RunScript(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, int file)
 {
+	PPXMCOMMANDSTRUCT pxcbuf;
+	int StayMode = ScriptStay_Cache;
+	WCHAR InvokeName[256];
 	String^ source;
 
 	if (pxc->paramcount < 1) {
@@ -3271,15 +3382,19 @@ int RunScript(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, int file)
 
 	CResult^ value = gcnew CResult;
 
-	PPXMCOMMANDSTRUCT pxcbuf;
-	int StayMode = ScriptStay_Cache;
-	WCHAR InvokeName[256];
-
 	InvokeName[0] = '\0';
-	if ( (pxc->paramcount > 0) && (pxc->param[0] == ':') ){
-		pxcbuf = *pxc;
-		pxc = &pxcbuf;
-		CheckOption(pxc, &StayMode, InvokeName);
+	if ( pxc->paramcount > 0 ){
+		if ( pxc->param[0] == ':' ){
+			pxcbuf = *pxc;
+			pxc = &pxcbuf;
+			CheckOption(pxc, &StayMode, InvokeName);
+		}else if ( (pxc->param[0] == '\0') && (pxc->paramcount >= 2) ){ // 第１パラメータが無いときは、shift
+			// *script 変数(空 または :12345),source ができるようにする
+			pxcbuf = *pxc;
+			pxcbuf.paramcount--;
+			pxcbuf.param += 1; // '\0' をスキップ
+			pxc = &pxcbuf;
+		}
 	}
 	try {
 		CInstance^ instance;
@@ -3290,7 +3405,11 @@ int RunScript(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, int file)
 			instance = GetStayInstance(ppxa, pxc, &OldInfo, StayMode, file);
 			if (instance != nullptr) {
 				// invoke 実行(関数名有り or インスタンス指定無し)
-				if ( (InvokeName[0] != '\0') || (StayMode < ScriptStay_Stay) || (pxc->paramcount == 0) || (pxc->param[0] == '\0') ){
+				if ( (InvokeName[0] != '\0') ||
+					 (StayMode < ScriptStay_Stay) ||
+					 (pxc->paramcount == 0) ||
+					 (pxc->param[0] == '\0') ||
+					 (file && (instance->source == marshal_as<String^>(pxc->param))) ){
 					return RunStayFunction(ppxa, pxc, value, StayMode, instance, &OldInfo, InvokeName);
 				}
 				// 既存 instance を使用
@@ -3353,4 +3472,58 @@ int RunScript(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, int file)
 		}
 		return funcresult;
 	}
+}
+
+const TCHAR InfoForm[] = L" %d";
+
+int StayInfo(PPXAPPINFOW *ppxa, PPXMCOMMANDSTRUCT *pxc)
+{
+	CInstance^ StayInstance;
+	DWORD ThreadID = GetCurrentThreadId();
+	HWND hWnd = ppxa->hWnd;
+	WCHAR *dest = pxc->resultstring, *destmax = dest + (CMDLINESIZE - 12);
+	int StayMode = ScriptStay_None;
+	int index, maxindex;
+
+	dest[0] = '\0';
+
+	if ( pxc->paramcount > 0 ){
+		const WCHAR *source = pxc->param;
+
+		if ( *source == ':' ) source++;
+		StayMode = GetIntNumberW(source);
+		if ( StayMode >= ScriptStay_Stay ){
+			dest[0] = '0';
+			dest[1] = '\0';
+		}
+	}
+
+	if (gc_StayInstance == nullptr) return PPXMRESULT_DONE;
+
+	System::Threading::Monitor::Enter(gc_StayInstance);
+	try {
+		maxindex = gc_StayInstance->Count;
+		for (index = 0; index < maxindex; index++) {
+			StayInstance = gc_StayInstance[index];
+			if ( (StayInstance->info->stay.threadID == ThreadID) &&
+				 (StayInstance->info->stay.hWnd == hWnd) ){
+				// インスタンス指定有り→個別結果
+				if ( StayMode >= ScriptStay_Stay ){
+					if ( StayInstance->info->stay.mode == StayMode ){
+						dest[0] = '1';
+						break;
+					}
+				}else{ // 指定無し→一覧
+					dest += wsprintf(dest, (dest == pxc->resultstring) ?
+							InfoForm + 1 : InfoForm,
+							StayInstance->info->stay.mode);
+					if ( dest >= destmax ) break;
+				}
+			}
+		}
+	}
+	finally {
+		System::Threading::Monitor::Exit(gc_StayInstance);
+	}
+	return PPXMRESULT_DONE;
 }

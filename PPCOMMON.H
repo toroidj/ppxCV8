@@ -121,12 +121,13 @@ typedef struct {
 
 //##  0x0800～0x0bff:			各種コマンド(PPxで解釈)。
 //   0x0800～0x09ff 取得系
-// 窓情報 0x 2x 8x 9x ax
+// 窓情報 80x 82x 88x 89x 8ax
 #define PPXCMDID_GETSUBID		0x0807	// 補助IDを取得
 #define PPXCMDID_GETREQHWND		0x0808	// 呼び出し元HWND(PPvの依頼元)
 #define PPXCMDID_GETFILEINFO	0x0820	// ファイル情報(VFSGetFileType)
 #define PPXCMDID_WINDOWDIR		0x0881	// 連結状態における現在窓の位置
 
+// PPc 84x 85x 86x (87x) 88x 89x 90x 91x 92x
 // 880, 888, 889 使用済み
 //#define PPXCMDID_PAIRWINDOWC	0x0882	// 反対窓の ID
 #define PPXCMDID_PAIRWINDOW		0x0883	// 反対窓の HWND(PPc)
@@ -138,13 +139,15 @@ typedef struct {
 #define PPXCMDID_COMBOIDCOUNT	0x088a	// 一体化窓の登録されたIDの窓数
 #define PPXCMDID_COMBOGETPANE	0x088b	// 指定IDタブのペインindexを検索
 #define PPXCMDID_COMBOGETHWNDEX	0x088c	// 指定IDタブのHWNDを取得
+#define PPXCMDID_COMBOGROUPCOUNT	0x0890	// 指定ペインのタブグループの数
+#define PPXCMDID_COMBOGROUPINDEX	0x0891	// 指定ペインのタブグループのindex
+#define PPXCMDID_COMBOGROUPNAME	0x0892	// 指定ペインのタブグループ名
 
 #define PPXCMDID_POPUPPOS		0x089f	// メニュー表示等に使う表示座標(POINT)
 #define PPXCMDID_CSRDISPW		0x08a0	// 幅方向の表示可能数(PPc, PPv)
 #define PPXCMDID_CSRDISPH		0x08a2	// 高さ方向の表示可能数(PPc, PPv)
 #define PPXCMDID_CSRDINDEX		0x08a3	// 表示開始インデックス(PPc)
 // 現在窓の情報
-// PPc 4x 5x 6x
 #define PPXCMDID_DIRTOTAL		0x0840	// 全エントリ数(ファイルマスクなし状態)
 #define PPXCMDID_DIRTTOTAL		0x0841	// 利用可能エントリ数(マスクあり)
 #define PPXCMDID_DIRTTOTALFILE	0x0842	// 利用可能ファイル数(マスクあり)
@@ -310,6 +313,9 @@ typedef struct {
 //#define PPXCMDID_CSRSETY		0x0a89	// 該当エントリの Y 位置(PPv)
 #define PPXCMDID_CSRSETLOCATE	0x0a8e	// カーソル位置 (x, y, w, h)
 
+#define PPXCMDID_SETCOMBOGROUPINDEX	0x0a91	// 指定ペインのタブグループのindex
+#define PPXCMDID_SETCOMBOGROUPNAME	0x0a92	// 指定ペインのタブグループ名
+
 #define PPXCMDID_ENTRYMARKFIRST	0x0a93	// 最初のマークエントリ
 #define PPXCMDID_ENTRYMARKNEXT	0x0a94	// 次のマークエントリ
 #define PPXCMDID_ENTRYINSERT	0x0a95	// エントリを挿入
@@ -404,6 +410,7 @@ typedef union tagPPXMODULEPARAM {
 	struct tagPPXMFILEDRAWSTRUCT *draw;
 	struct tagPPXMKEYHOOKSTRUCT *keyhook;
 	struct tagPPXMSEARCHSTRUCT *search;
+	struct tagPPXMCOMPLISTSTRUCT *complist;
 } PPXMODULEPARAM;
 
 typedef union {
@@ -1309,6 +1316,7 @@ typedef struct {
 #define REGEXPF_REQ_TIME B6 // 時刻情報が必要
 #define REGEXPF_BLANK B7 // 空欄だった
 #define REGEXPF_STRING B8 // 's' パス区切りを意識しない(ディレクトリも対象に)
+#define REGEXPF_COMPLIST B9 // 'L' 補完検索モード
 #define REGEXPF_ERROR B31 // エラー有り
 /* ワイルドカードの解析を行う 戻り値:REGEXPF_ flags */
 extern PPXDLL DWORD PPXAPI MakeFN_REGEXP(FN_REGEXP *fn, const TCHAR *src);
@@ -1655,10 +1663,11 @@ extern PPXDLL HWND PPXAPI PPEui(HWND hPWnd, const TCHAR *title, const TCHAR *tex
 #define PPXMEVENT_COMMAND	6	// 未定義コマンドの解釈     (PPXMCOMMANDSTRUCT)
 #define PPXMEVENT_FUNCTION	7	// 未定義関数の解釈         (PPXMCOMMANDSTRUCT)
 #define PPXMEVENT_FILEDRAW	8	// PPcファイル情報の表示   (PPXMFILEDRAWSTRUCT)
-#define PPXMEVENT_FILEDRAWINFO	9	// PPXMEVENT_FILEDRAW の情報送信を要求
+#define PPXMEVENT_FILEDRAWINFO 9 // PPXMEVENT_FILEDRAW の情報送信を要求
 		// 情報送信は、PPXCMDID_REPORTPPCCOLUMN で名前を通知する (パラメータ無)
-#define PPXMEVENT_SEARCH	10 // ファイル等の検索をする   (PPXMSEARCHSTRUCT)
+#define PPXMEVENT_SEARCH	10	// ファイル等の検索をする   (PPXMSEARCHSTRUCT)
 		// 検索結果は、PPXCMDID_REPORTSEARCH で通知する
+#define PPXMEVENT_COMPLIST	11	// 一行編集補完リストの拡張 (PPXMCOMPLISTSTRUCT)
 //#define PPXMEVENT_CREATE		// アプリケーション作成時に送られる(未実装)
 //#define PPXMEVENT_DESTROY		// アプリケーション終了時に送られる(未実装)
 //#define PPXMEVENT_MOUSE		// マウスクリック時に送られる(未実装)
@@ -1722,6 +1731,13 @@ typedef struct tagPPXMSEARCHSTRUCT {
 		// 短縮するために用いるので、MAX32 でないとき(PPXMSEARCH_SHORTRESULT)は
 		// 短時間(0.1秒程度)で結果を返すようにする
 } PPXMSEARCHSTRUCT;
+
+// PPXMEVENT_COMPLIST - 一行編集補完リスト拡張表示モジュール
+typedef struct tagPPXMCOMPLISTSTRUCT {
+	HWND hListWnd;
+	WNDPROC OldProc;
+	BOOL direction;
+} PPXMCOMPLISTSTRUCT;
 
 // ModuleEntry の戻り値
 #define PPXMRESULT_SKIP 0	// 処理しなかった…次のモジュールを調べても良い
