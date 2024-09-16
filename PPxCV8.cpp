@@ -16,10 +16,17 @@ ref class CInstance;
 int RunScript(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, int file);
 int StayInfo(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc);
 String^ GetScriptText(String^ param, int file);
-void FreeStayInstance(void);
+void FreeStayInstance(PPXAPPINFOW *ppxa, BOOL terminate);
 void DropStayInstance(CInstance^ instance);
 
 long PPxVersion = 0;
+
+DWORD_PTR USECDECL DummyPPxFunc(PPXAPPINFOW* ppxa, DWORD cmdID, void* uptr)
+{
+	return PPXA_INVALID_FUNCTION;
+}
+
+PPXAPPINFOW DummyPPxAppInfo = { DummyPPxFunc, L"", L"", NULL };
 
 // PPx.setValue / PPx.getValue の保存先
 gcroot<Collections::Concurrent::ConcurrentDictionary<String^, Object^>^> g_value = nullptr;
@@ -2975,19 +2982,29 @@ VC_DLL_EXPORTS int WINAPI ModuleEntry(PPXAPPINFOW* ppxa, DWORD cmdID, PPXMODULEP
 	}
 
 	if ( cmdID == PPXMEVENT_CLOSETHREAD ){ // 1.97+1 から有効
-		FreeStayInstance();
+		FreeStayInstance(ppxa, TRUE);
+		return PPXMRESULT_DONE;
+	}
+
+	if ( cmdID == PPXMEVENT_DESTROY ){ // 1.98+4 から有効
+		FreeStayInstance(ppxa, FALSE);
 		return PPXMRESULT_DONE;
 	}
 
 	if (cmdID == PPXM_INFORMATION) {
 		if (pxs.info->infotype == 0) {
-			pxs.info->typeflags = PPMTYPEFLAGS(PPXM_INFORMATION) | PPMTYPEFLAGS(PPXMEVENT_COMMAND) | PPMTYPEFLAGS(PPXMEVENT_FUNCTION);
+			pxs.info->typeflags = PPMTYPEFLAGS(PPXM_INFORMATION) |
+					PPMTYPEFLAGS(PPXMEVENT_CLEANUP) |
+					PPMTYPEFLAGS(PPXMEVENT_CLOSETHREAD) |
+					PPMTYPEFLAGS(PPXMEVENT_DESTROY) |
+					PPMTYPEFLAGS(PPXMEVENT_COMMAND) |
+					PPMTYPEFLAGS(PPXMEVENT_FUNCTION);
 			wcscpy(pxs.info->copyright, L"PPx V8 Script Module R" SCRIPTMODULEVERSTR L"  Copyright (c)TORO");
 			return PPXMRESULT_DONE;
 		}
 	}
 	if (cmdID == PPXMEVENT_CLEANUP) {
-		if ( PPxVersion > 19700 ) FreeStayInstance();
+		if ( PPxVersion > 19700 ) FreeStayInstance(&DummyPPxAppInfo, TRUE);
 		if (gc_value != nullptr) delete g_value; // 解放
 		return PPXMRESULT_DONE;
 	}
@@ -3149,13 +3166,6 @@ CInstance^ GetStayInstance(PPXAPPINFOW* ppxa, PPXMCOMMANDSTRUCT* pxc, OldPPxInfo
 	return StayInstance;
 }
 
-DWORD_PTR USECDECL DummyPPxFunc(PPXAPPINFOW* ppxa, DWORD cmdID, void* uptr)
-{
-	return PPXA_INVALID_FUNCTION;
-}
-
-PPXAPPINFOW DummyPPxAppInfo = { DummyPPxFunc, L"", L"", NULL };
-
 PPXMCOMMANDSTRUCT DummyPxc =
 #ifndef _WIN64
 { L"", L"", 0, 0, NULL };
@@ -3228,7 +3238,7 @@ void DropStayInstance(CInstance^ instance)
 	}
 }
 
-void FreeStayInstance(void)
+void FreeStayInstance(PPXAPPINFOW *ppxa, BOOL terminate)
 {
 	int index, maxindex;
 	CInstance^ StayInstance;
@@ -3242,7 +3252,9 @@ void FreeStayInstance(void)
 			maxindex = gc_StayInstance->Count;
 			for (index = 0; index < maxindex; index++) {
 				StayInstance = gc_StayInstance[index];
-				if ( StayInstance->info->stay.threadID == ThreadID ){
+				if ( (StayInstance->info->stay.threadID == ThreadID) &&
+					 (terminate ||
+					  (StayInstance->info->stay.hWnd == ppxa->hWnd)) ){
 					changed = TRUE;
 					gc_StayInstance->RemoveAt(index);
 					break;
@@ -3254,6 +3266,7 @@ void FreeStayInstance(void)
 		}
 		if ( !changed ) break;
 		try {
+			StayInstance->info->ppxa = ppxa;
 			StayInstance->engine->Invoke("ppx_finally");
 		}catch (Exception^) { // エラーが起きてもなにもしない
 		}

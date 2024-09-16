@@ -410,7 +410,7 @@ typedef union tagPPXMODULEPARAM {
 	struct tagPPXMFILEDRAWSTRUCT *draw;
 	struct tagPPXMKEYHOOKSTRUCT *keyhook;
 	struct tagPPXMSEARCHSTRUCT *search;
-	struct tagPPXMCOMPLISTSTRUCT *complist;
+	struct tagPPXMEXTLISTBOX *listbox;
 } PPXMODULEPARAM;
 
 typedef union {
@@ -808,13 +808,13 @@ extern PPXDLL int PPXAPI tInputEx(TINPUT *tinput);
 // B5 未使用
 #define PPXEDIT_WANTENTER	B6	// Enter/ESCでWM_COMMANDに キーコード を通知
 #define PPXEDIT_WANTEVENT	B7	// Event実行有り
-#define PPXEDIT_REFTREE		B8	// Refは Dir Tree
-#define PPXEDIT_SINGLEREF	B9	// Refは すべていれかえ
+#define PPXEDIT_REFTREE		B8	// Refは Dir Tree(TIEX_REFTREE)
+#define PPXEDIT_SINGLEREF	B9	// Refは すべていれかえ(TIEX_SINGLEREF)
 #define PPXEDIT_PANEMODE	B10	// マウスによるアクティブ時の動作を変える
 #define PPXEDIT_WANTALLKEY	B11	// ダイアログ用のキーを無効にする
-#define PPXEDIT_INSTRSEL	B12	// "|"による範囲指定を有効にする
+#define PPXEDIT_INSTRSEL	B12	// "|"による範囲指定を有効にする(TIEX_INSTRSEL)
 #define PPXEDIT_NOWORDBREAK	B13	// ES_MULTILINE時に、単語の途中で改行する(Vista以降)
-#define PPXEDIT_LINE_MULTI	B14	// １行編集の複数行版(要ES_MULTILINE)
+#define PPXEDIT_LINE_MULTI	B14	// １行編集の複数行版(要ES_MULTILINE)(TIEX_LINE_MULTI)
 #define PPXEDIT_ENABLE_WIDTH_CHANGE B15	// サイズ変更キー(&\←→)を有効に
 #define PPXEDIT_ENABLE_HEIGHT_CHANGE B16	// サイズ変更キー(&\↑↓)を有効に
 #define PPXEDIT_ENABLE_SIZE_CHANGE (B15 | B16)	// サイズ変更キーを有効に
@@ -1657,7 +1657,9 @@ extern PPXDLL HWND PPXAPI PPEui(HWND hPWnd, const TCHAR *title, const TCHAR *tex
 								//                (ppxa使用不可 , パラメータ無)
 #define PPXMEVENT_CLOSETHREAD 2	// スレッドを終了するときに送られる。
 								// ただし、PPXCMDID_REQUIRE_CLOSETHREAD で
-								// 要求したときのみ
+								// 要求したときのみ(ppxa使用不可 , パラメータ無)
+#define PPXMEVENT_DESTROY	3	// アプリケーション・一行編集終了時に送られる
+								// (パラメータ無)
 #define PPXMEVENT_KEYHOOK	5	// キー入力時に送られる(登録をしたときのみ)
 								//							(PPXMKEYHOOKSTRUCT)
 #define PPXMEVENT_COMMAND	6	// 未定義コマンドの解釈     (PPXMCOMMANDSTRUCT)
@@ -1667,9 +1669,8 @@ extern PPXDLL HWND PPXAPI PPEui(HWND hPWnd, const TCHAR *title, const TCHAR *tex
 		// 情報送信は、PPXCMDID_REPORTPPCCOLUMN で名前を通知する (パラメータ無)
 #define PPXMEVENT_SEARCH	10	// ファイル等の検索をする   (PPXMSEARCHSTRUCT)
 		// 検索結果は、PPXCMDID_REPORTSEARCH で通知する
-#define PPXMEVENT_COMPLIST	11	// 一行編集補完リストの拡張 (PPXMCOMPLISTSTRUCT)
+#define PPXMEVENT_EXLISTBOX	11	// 拡張リストボックス (PPXMEXTLISTBOX)
 //#define PPXMEVENT_CREATE		// アプリケーション作成時に送られる(未実装)
-//#define PPXMEVENT_DESTROY		// アプリケーション終了時に送られる(未実装)
 //#define PPXMEVENT_MOUSE		// マウスクリック時に送られる(未実装)
 //#define PPXMEVENT_CURSOR		// カーソル位置変更時に送られる(未実装)
 
@@ -1732,12 +1733,20 @@ typedef struct tagPPXMSEARCHSTRUCT {
 		// 短時間(0.1秒程度)で結果を返すようにする
 } PPXMSEARCHSTRUCT;
 
-// PPXMEVENT_COMPLIST - 一行編集補完リスト拡張表示モジュール
-typedef struct tagPPXMCOMPLISTSTRUCT {
+// PPXMEVENT_EXLISTBOX - 拡張リストボックスモジュール
+typedef struct tagPPXMEXTLISTBOX {
 	HWND hListWnd;
-	WNDPROC OldProc;
-	BOOL direction;
-} PPXMCOMPLISTSTRUCT;
+	LPCTSTR Caption;
+	HWND hParentWnd;
+	HMENU hMenu;
+	HINSTANCE hInst;
+	LPVOID lParam;
+	DWORD ExStyle;
+	DWORD Style;
+	int x, y;
+	int width, height;
+	int type; // 0:汎用 1: 補完下側  2: 未使用 3: 補完上側
+} PPXMEXTLISTBOX;
 
 // ModuleEntry の戻り値
 #define PPXMRESULT_SKIP 0	// 処理しなかった…次のモジュールを調べても良い
