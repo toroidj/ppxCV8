@@ -3245,6 +3245,7 @@ void FreeStayInstance(PPXAPPINFOW *ppxa, BOOL terminate)
 	BOOL changed;
 	DWORD ThreadID = GetCurrentThreadId();
 
+	if (gc_StayInstance == nullptr) return;
 	for (;;){
 		changed = FALSE;
 		System::Threading::Monitor::Enter(gc_StayInstance);
@@ -3270,7 +3271,13 @@ void FreeStayInstance(PPXAPPINFOW *ppxa, BOOL terminate)
 			StayInstance->engine->Invoke("ppx_finally");
 		}catch (Exception^) { // エラーが起きてもなにもしない
 		}
-		delete StayInstance;
+
+		// 強制終了、又は再入状態ではない→ここで終了する
+		if ( terminate || (StayInstance->info->stay.entry <= 0) ){
+			delete StayInstance;
+		}else{ // 再入しているので、常駐の解除指示を行う
+			StayInstance->info->stay.mode = ScriptStay_None;
+		}
 	}
 }
 

@@ -1,7 +1,7 @@
 @echo off
-set RETAIL=2
+set RETAIL=1
 rem *** set value ***
-set arcname=ppxCV8R03p6.zip
+set arcname=ppxCV8R04.zip
 set readme=PPxCV8.TXT
 set srcname=source.7z
 set exename=PPxCV8

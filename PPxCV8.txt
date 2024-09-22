@@ -1,5 +1,5 @@
  ------------------------------------------------------------------------------
-	Paper Plane xUI  V8 Script Module R3+6   Copyright (c)2022-2024 TORO
+	Paper Plane xUI  V8 Script Module R4   Copyright (c)2022-2024 TORO
  ------------------------------------------------------------------------------
 
 	.NET 用の Clear Script の V8 を利用して PPx 上で Javascript を実行する
@@ -524,10 +524,10 @@ E_cr	= {
 	endstate =  vpane.atEnd()		関数
 		    vpane.moveNext()		関数
 		    vpane.Reset()		関数
-(試作)	g_index =   vpane.GroupIndex		プロパティ(R/W)
-(試作)	count =     vpane.GroupCount		プロパティ(R)
-(試作)	str_array = vpane.GroupList		プロパティ(R)
-(試作)	name =      vpane.GroupName		プロパティ(R/W)
+	g_index =   vpane.GroupIndex		プロパティ(R/W)
+	count =     vpane.GroupCount		プロパティ(R)
+	str_array = vpane.GroupList		プロパティ(R)
+	name =      vpane.GroupName		プロパティ(R/W)
 
 *一体化時の各タブの情報(PPc,一体化時専用,タブがないときは該当ペインの情報)
     tab = PPx.Pane.Tab				オブジェクト
@@ -1285,12 +1285,12 @@ E_cr	= {
 	.atEnd(), .moveNext(), .Reset()
 			WSH版でも使える列挙機能です
 
-(試作)	.GroupIndex	アクティブグループ位置のプロパティ(R/W)です。
+	.GroupIndex	アクティブグループ位置のプロパティ(R/W)です。
 			代入(set)でアクティブグループを変更できます。
-(試作)	.GroupName	アクティブグループのグループ名のプロパティ(R/W)です。
+	.GroupName	アクティブグループのグループ名のプロパティ(R/W)です。
 			代入(set)でグループ名を変更できます。
-(試作)	.GroupCount	ペインのタブグループ数のプロパティ(R)です。
-(試作)	.GroupList	ペインのタブグループ一覧をtab区切りの文字列で返します。
+	.GroupCount	ペインのタブグループ数のプロパティ(R)です。
+	.GroupList	ペインのタブグループ一覧をtab区切りの文字列で返します。
 			配列にする場合は、次のようにしてください。
 			list = PPx.Pane.GroupList.split('\t');
 
@@ -1500,35 +1500,20 @@ E_cr	= {
 
 
 ●履歴
-R3+7	2024/09/15
-・ppx_finally を一行編集終了時に実行できるように(要 PPx 1.98+4)
-
-R3+6	2024/09/07
-・*script :インスタンス番号,スクリプトファイル名で同名常駐時は ppx_resume実行
-・常駐インスタンスの情報を取得する関数(%*stayinfo)を追加
-
-R3+5	2024/06/22
-・PPx.StayMode 使用時の挙動を調整
-
-R3+4	2024/06/15
-・PPx.Entry.Item(n) で、nの省略記載ができなかったのを修正
-・PPx.CreateObject がOLEオブジェクトのイベントに対応(import併用不可)
-・PPx.Include(), PPx.LoadCount() を追加
-・PPx.Entry.IndexFrom() を追加
+R4	2024/09/22
 ・PPx.Pane.IndexFrom と PPx.Pane.Tab.IndexFrom をプロパティから関数に変更
-・PPx.StayMode を追加
-・.NET コンポーネントの参照設定(PPx.AddReference)を追加
-
-R3+3	2024/05/18
 ・PPx.Entry.DateCreated/DateLastModified/DateLastAccessedをECMAScript元期値に
+・PPx.CreateObject がOLEオブジェクトのイベントに対応(import併用不可)
+・PPx.Entry.IndexFrom() を追加
+・PPx.Entry.Item(n) で、nの省略記載ができなかったのを修正
 ・PPx.Enumerator(JScript の new Enumerator相当)を追加
-
-R3+2	2024/05/12
-・PPx.result で undefined,true,falseを受け付けたときの結果をWSH版と揃えた
 ・PPx.GetFileInformation で mode 指定を有効にした(PPx 1.97以降)
-
-R3+1	2023/12/02
+・PPx.Include(), PPx.LoadCount() を追加
+・PPx.result で undefined,true,falseを受け付けたときの結果をWSH版と揃えた
+・PPx.StayMode を追加
 ・PPx.Quit を使うと PPx.result の結果が受け取れないのを修正
+・常駐インスタンスの情報を取得する関数(%*stayinfo)を追加
+・.NET コンポーネントの参照設定(PPx.AddReference)を追加
 
 R3	2023/10/14
 ・PPx.result で null 等を受け付けられるようにした

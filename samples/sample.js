@@ -5,6 +5,8 @@ PPx.report(
 	"\r\n● sample.js\r\n"+
 	"Script Engine: " + PPx.ScriptEngineName + "\r\n" +
 	"Engine Version: " + PPx.ScriptEngineVersion + "\r\n" +
+	"Module Version: R" + PPx.ModuleVersion + "\r\n" +
+	"PPx Version: " + PPx.PPxVersion / 100.0 + "\r\n" +
 	"ScriptFullName: " + PPx.ScriptFullName + "\r\n" +
 	"ScriptName: " + PPx.ScriptName + "\r\n" +
 	"WindowIDName: " + PPx.WindowIDName + "\r\n" +

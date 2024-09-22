@@ -8,10 +8,10 @@ PPx.report("\r\n* sample_import.js ("+ PPx.ScriptEngineName + " " + PPx.ScriptEn
 
 try {
 	import('./sample_export.js').then(module => {
-		PPx.report("dynamic 10 * 123 = " + module.test(10));
+		PPx.report("dynamic 10 * 123 = " + module.test(10) + "\r\n");
 	});
 
-	PPx.report("static 10 * 123 = " + exmodule.test(10));
+	PPx.report("static 10 * 123 = " + exmodule.test(10) + "\r\n");
 }catch(e){
 	PPx.Echo("-- PPxQjs.dll error --\n" + PPx.ScriptName + "\n" + e + "\n" + e.stack);
 }

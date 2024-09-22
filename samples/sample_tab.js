@@ -1,28 +1,37 @@
 ﻿//!*script
 // JScript / JScript(Chakra) / V8 / QuickJS 兼用
 
-PPx.linemessage(PPx.ScriptEngineName);
 PPx.WindowIDName = "1"; // (WSH版)C_Z -> CZaa に変更。V8/QuickJS版は常にCZaa形式
 
-PPx.Echo("Total Items:" + PPx.GetComboItemCount() );
+var text = PPx.ScriptEngineName;
+
+var pane = PPx.Pane;
+var tab = pane.Tab;
+
+text += "\r\n\r\nGetComboItemCount = " + PPx.GetComboItemCount() + "\r\n"
+	+ "Current Pane #" + pane.index + "(length = " + pane.length + ")\r\n"
+	+ "Current Tab #" + tab.index + "(length = " + tab.length  + ")\r\n"
+	+ "  IDName = " + tab.IDName + ", Name = " + tab.Name + "\r\n"
+	+ "    Type = " + tab.Type + ", Lock = " + tab.Lock + ", Color/BackColor = " + tab.Color + "/" + tab.BackColor + "\r\n"
 
 // (兼用)PPx.Pane.Tab.Item(0).Name (WSH限定)PPx.Pane.Tab(0).Name
-PPx.Echo("Tab 0--> Pane:"+PPx.Pane.Tab.item(0).Pane + " / " + PPx.Pane.Tab.item(0).Name + " / " + PPx.Pane.Tab.item(0).IDName);
-PPx.Echo("Tab 1--> Pane:"+PPx.Pane.Tab.Item(1).Pane + " / " + PPx.Pane.Tab.Item(1).Name + " / " + PPx.Pane.Tab.item(1).IDName);
+text += "Tab 0--> Pane:"+PPx.Pane.Tab.item(0).Pane + " / " + PPx.Pane.Tab.item(0).Name + " / " + PPx.Pane.Tab.item(0).IDName;
+text += "\r\nTab 1--> Pane:"+PPx.Pane.Tab.Item(1).Pane + " / " + PPx.Pane.Tab.Item(1).Name + " / " + PPx.Pane.Tab.item(1).IDName;
 
-PPx.Echo("current Pane : " + PPx.Pane.index + " / " + PPx.Pane.Tab.IDName);
 
 var items = PPx.Pane;
 for ( ; !items.atEnd() ; items.moveNext() ){
-	PPx.Echo ("Pane : " + items.index + " / " + items.Tab.IDName);
+	text += "\r\nPane.index = " + items.index + ", IDName = " + items.Tab.IDName;
 }
 
 var items = PPx.Pane.Tab;
 for ( ; !items.atEnd() ; items.moveNext() ){
-	PPx.Echo ("Tab : " + items.index + " / " + items.IDName);
+	text += "\r\nTab.index = " + items.index + ", IDName = " + items.IDName;
 }
 
-PPx.report("Tab 2: lock\r\n");
+PPx.report(text);
+
+PPx.report("\r\nTab 2: lock\r\n");
 PPx.Pane.Tab.item(2).Lock = -1;
 
 PPx.report("Tab current: change tab color\r\n");
@@ -32,4 +41,4 @@ a.Tab.BackColor = 0xffffff;
 
 var b = a.Tab;
 b.IndexFrom = "CB";
-PPx.Echo("Tab CB type:" + b.Type);
+PPx.report("Tab IDName = CB, type = " + b.Type + "\r\n");

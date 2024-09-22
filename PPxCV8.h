@@ -4,8 +4,8 @@
 #pragma once
 #define TOSTRMACRO(item)	#item
 
-#define SCRIPTMODULEVER		3  // Release number
-#define SCRIPTMODULEVERSTR	UNICODESTR(TOSTRMACRO(3))
+#define SCRIPTMODULEVER		4  // Release number
+#define SCRIPTMODULEVERSTR	UNICODESTR(TOSTRMACRO(4))
 
 using namespace System;
 using namespace System::Collections;
